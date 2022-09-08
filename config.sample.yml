@@ -1,0 +1,4 @@
+server:
+  host: server_host_name
+qris:
+  emv_data: load_your_emvqr_here

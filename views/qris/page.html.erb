@@ -1,0 +1,36 @@
+<html>
+<head>
+  <title>QRIS Code Generator</title>
+</head>
+<body>
+  <style>
+    * {
+      text-align:center;
+    }
+    table {
+      margin: auto;
+    }
+    table tr > td:first-child {
+      width: 25%;
+    }
+  </style>
+  <form method=POST action="/">
+    <table>
+      <tr><td>Base Code</td><td><input name=base value="<%= @code %>" /></td></tr>
+      <tr><td>Payment</td><td><input name=value type=number step=any inputmode=decimal lang=en /></td></tr>
+      <tr><td>Watermark</td><td><input name=mark type=text value="<%= @url %>" /></td></tr>
+      <tr><td></td><td><input name=submit type=submit /></td></tr>
+      <tr>
+        <td>QR Code</td>
+        <td style="position: relative">
+          <img src="<%= @data %>" width=500 height=500 />
+          <div class="darkreader" style="width: 18%; height: 18%; position: absolute; top: 40%; left: 40%; padding: 1%; background: white !important;">
+            <img src="<%= @url %>" width="100%" height="100%">
+          </div>
+        </td>
+      </tr>
+      <tr><td>Details</td><td><pre style="text-align:left;"><%= @debug %></pre></td></tr>
+    </table>
+  </form>
+</body>
+</html>
