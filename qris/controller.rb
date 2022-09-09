@@ -1,6 +1,7 @@
 module QRISConverter
   require 'erb'
   class QROutput
+    attr_accessor :lite
     attr_accessor :code
     attr_accessor :value
     attr_accessor :url
@@ -27,9 +28,18 @@ module QRISConverter
     end
 
     private
+    def _user_agents
+      @request.user_agent.scan(/(\w+(?:\/\S+)?)(?:\s+\(([^\)]+)\))?/)
+    end
+    def _is_not_moz?
+      !_user_agents[0][0].include? 'Mozilla'
+    rescue
+      true
+    end
     def _process_input
       @layout = 'qris/page'
       qr = QROutput.new
+      qr.lite = false
       if @request.post? then
         qr.code = @request.POST['base']
         qr.value = @request.POST['value'].to_s.empty? ? nil : sprintf("%.2f", @request.POST['value'].to_f)
@@ -39,33 +49,37 @@ module QRISConverter
         qr.value = nil
         qr.url = nil
       end
-      if qr.code.nil? then
-        qr.code = QRISConverter.config[:qris][:emv_data]
-      end
       
-      merchant = Merchant::parse_str(Merchant::EMVRoot.new, qr.code)
-      merchant.static_code!
-      qr.code = merchant.to_emv
-      merchant.set_fee(false)
+      unless _is_not_moz?
+        qr.code = (QRISConverter.config[:qris][:emv_data] rescue nil) if qr.code.nil?
+      end
+      qr.lite = true if qr.code.nil?
+      
       qr.data = 'about:blank'
-      
-      new_code = qr.code
-      unless qr.value.to_s.empty? then
-        merchant.dynamic_code! qr.value
-        new_code = merchant.to_emv
+      if qr.lite then
+        qr.debug = ''
+      else
+        merchant = Merchant::parse_str(Merchant::EMVRoot.new, qr.code)
+        merchant.static_code!
+        qr.code = merchant.to_emv
+        merchant.set_fee(false)
+        
+        new_code = qr.code
+        unless qr.value.to_s.empty? then
+          merchant.dynamic_code! qr.value
+          new_code = merchant.to_emv
+        end
+        
+        processor = RQRCode::QRCode.new(new_code)
+        image_data = _process_image_output(
+          processor.as_png(
+            module_px_size: 2,
+            size: 960,
+          ), qr.url
+        )
+        qr.data = image_data.to_data_url
+        qr.debug = merchant.debug_emv
       end
-      # merchant[1].content = 11
-      
-      processor = RQRCode::QRCode.new(new_code)
-      image_data = _process_image_output(
-        processor.as_png(
-          module_px_size: 2,
-          size: 960,
-        ), qr.url
-      )
-      qr.data = image_data.to_data_url
-      qr.debug = merchant.debug_emv
-      
       template = ERB.new(File.read(File.join(Dir.pwd, 'views', @layout + '.html.erb')))
       @response.write qr.process(template)
     end
