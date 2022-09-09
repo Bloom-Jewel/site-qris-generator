@@ -19,8 +19,8 @@ RUN \
   cd web && \
   bundle install
 
-COPY --chown=1000:1000 config.yml web/
 WORKDIR /home/bourbon/web
+COPY --chown=1000:1000 config.yml .
 
 # Apply RUBYOPT after.
 ENV RUBYOPT="-I${RUBY__BLOOM_SITE} -rbloom-jewel/site"
