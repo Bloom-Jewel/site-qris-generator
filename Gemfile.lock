@@ -2,6 +2,7 @@ GEM
   remote: https://rubygems.org/
   specs:
     chunky_png (1.4.0)
+    mini_magick (4.11.0)
     rack (2.2.3)
     rqrcode (2.1.2)
       chunky_png (~> 1.0)
@@ -14,6 +15,7 @@ PLATFORMS
   x64-mingw32
 
 DEPENDENCIES
+  mini_magick (~> 4.11)
   rack
   rqrcode (~> 2)
   yaml

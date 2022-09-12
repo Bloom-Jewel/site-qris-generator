@@ -1,22 +1,27 @@
+require 'erb'
+require 'tempfile'
+
 module QRISConverter
-  require 'erb'
   class QROutput
     attr_accessor :lite
     attr_accessor :code
     attr_accessor :value
     attr_accessor :url
     attr_accessor :data
+    attr_accessor :real_mark
     attr_accessor :debug
     
     def process(template)
       template.result(binding)
     end
   end
+  WatermarkQueue = {}
   class Controller
     def initialize(req, resp)
       @request = req
       @response = resp
       @layout = nil
+      @true_watermark = false
     end
     
     def load_page
@@ -80,33 +85,68 @@ module QRISConverter
         qr.data = image_data.to_data_url
         qr.debug = merchant.debug_emv
       end
+      qr.real_mark = @true_watermark
       template = ERB.new(File.read(File.join(Dir.pwd, 'views', @layout + '.html.erb')))
       @response.write qr.process(template)
     end
     def _process_image_output(processor, url)
       size = 960
-      
+      tmp_logo = nil
+      qr_logo = nil
+
       unless url.nil? then
         uri = URI(url)
+        url_hash = Digest::SHA256.hexdigest(url)
         
-        qr_back = ChunkyPNG::Image.new(size/5, size/5, '#ffffff')
-        qr_logo = nil
-        Net::HTTP.start(uri.host, uri.port, use_ssl: uri.port == 443) do |http|
-          req = Net::HTTP::Get.new(uri.path)
-          res = http.request req
-          res.value
-          qr_logo = ChunkyPNG::Image.from_string(res.body)
-        rescue => e
-          p e
+        if WatermarkQueue.key?(url) then
+          tmp_logo = WatermarkQueue[url]
+        elsif defined?(MiniMagick) then
+          mgc_logo = MiniMagick::Image.open(url)
+          logo_size = size / 5
+          logo_border = logo_size / 10
+          logo_final = logo_size - (logo_border)
+          mgc_logo.format('png')
+          mgc_logo.resize(sprintf("%1$dx%1$d", logo_final))
+          mgc_logo.alpha 'set'
+          mgc_logo.bordercolor 'none'
+          mgc_logo.border logo_border
+          tmp_logo = Tempfile.new(url_hash)
+          tmp_logo.write mgc_logo.to_blob
+          WatermarkQueue[url] = tmp_logo
+        else
+          tmp_logo = Tempfile.new(url_hash)
+          Net::HTTP.start(uri.host, uri.port, use_ssl: uri.port == 443) do |http|
+            req = Net::HTTP::Get.new(uri.path)
+            res = http.request req
+            res.value
+          rescue => e
+            p e
+          else
+            tmp_logo.write res.body
+            WatermarkQueue[url] = tmp_logo
+          end
         end
-        if qr_logo then
-          qr_logo.resample_nearest_neighbor! size / 5, size / 5
-          processor.replace! qr_back, (size * 2 / 5), (size * 2 / 5)
-          processor.compose! qr_logo, (size * 2 / 5), (size * 2 / 5)
+        if tmp_logo then
+          qr_logo = ChunkyPNG::Image.from_file(tmp_logo.path)
         end
-      end if false
+      end
+      
+      unless qr_logo.nil? then
+        qr_back = ChunkyPNG::Image.new(size / 5, size / 5, '#ffffff')
+        processor.replace! qr_back, (size * 2 / 5), (size * 2 / 5)
+        processor.compose! qr_logo, (size * 2 / 5), (size * 2 / 5)
+        @true_watermark = true
+      end
       
       processor
+    rescue => e
+      
+    ensure
+      WatermarkQueue.keys.slice(0...-5).each do |queue_key|
+        queue_tmp = WatermarkQueue.delete(queue_key)
+        queue_tmp&.close
+        queue_tmp&.unlink
+      end if WatermarkQueue.size > 10
     end
     def ping_redirect
       rq_ua = @request.user_agent.split(';')
