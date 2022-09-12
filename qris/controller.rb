@@ -106,7 +106,7 @@ module QRISConverter
           logo_border = logo_size / 10
           logo_final = logo_size - (logo_border)
           mgc_logo.format('png')
-          mgc_logo.resize(sprintf("%1$dx%1$d", logo_final))
+          mgc_logo.resize sprintf("%1$dx%1$d", logo_final)
           mgc_logo.alpha 'set'
           mgc_logo.bordercolor 'none'
           mgc_logo.border logo_border
@@ -132,9 +132,11 @@ module QRISConverter
       end
       
       unless qr_logo.nil? then
-        qr_back = ChunkyPNG::Image.new(size / 5, size / 5, '#ffffff')
-        processor.replace! qr_back, (size * 2 / 5), (size * 2 / 5)
-        processor.compose! qr_logo, (size * 2 / 5), (size * 2 / 5)
+        qr_back = ChunkyPNG::Image.new(qr_logo.width, qr_logo.height, '#ffffff')
+        x_off = (processor.width - qr_back.width) / 2
+        y_off = (processor.height - qr_back.height) / 2
+        processor.replace! qr_back, x_off, y_off
+        processor.compose! qr_logo, x_off, y_off
         @true_watermark = true
       end
       
