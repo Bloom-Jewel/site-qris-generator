@@ -8,18 +8,19 @@ EXPOSE 8694
 RUN \
   addgroup mihono && \
   adduser -D -G mihono bourbon && \
-  apk update && apk upgrade && \
-  apk add git
+  apk add --no-cache \
+    git \
+    imagemagick && \
+  mkdir /app && chown bourbon:mihono /app
 
 USER bourbon
 
 RUN \
-  cd $HOME && \
-  git clone https://github.com/Bloom-Jewel/site-qris-generator web && \
-  cd web && \
+  git clone https://github.com/Bloom-Jewel/site-qris-generator /app && \
+  cd /app && \
   bundle install
 
-WORKDIR /home/bourbon/web
+WORKDIR /app
 COPY --chown=1000:1000 config.yml .
 
 # Apply RUBYOPT after.
