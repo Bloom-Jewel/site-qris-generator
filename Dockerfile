@@ -1,7 +1,7 @@
 FROM ruby:2.7-alpine
 
 ENV RUBY__BLOOM_SITE=/usr/local/lib/ruby/site/lib
-VOLUME [${RUBY__BLOOM_SITE}]
+VOLUME ["${RUBY__BLOOM_SITE}"]
 
 EXPOSE 8694
 
