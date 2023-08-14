@@ -105,11 +105,12 @@ module QRISConverter
           logo_size = size / 5
           logo_border = logo_size / 10
           logo_final = logo_size - (logo_border)
-          mgc_logo.format('png')
-          mgc_logo.resize sprintf("%1$dx%1$d", logo_final)
-          mgc_logo.alpha 'set'
-          mgc_logo.bordercolor 'none'
-          mgc_logo.border logo_border
+            mgc_logo.format('png') do |op|
+            op.resize sprintf("%1$dx%1$d", logo_final)
+            op.alpha 'set'
+            op.bordercolor 'none'
+            op.border logo_border
+          end
           tmp_logo = Tempfile.new(url_hash)
           tmp_logo.write mgc_logo.to_blob
           WatermarkQueue[url] = tmp_logo
