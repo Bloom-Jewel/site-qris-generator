@@ -15,7 +15,9 @@ module QRISConverter
       template.result(binding)
     end
   end
+  remove_const :WatermarkQueue if const_defined? :WatermarkQueue
   WatermarkQueue = {}
+
   class Controller
     def initialize(req, resp)
       @request = req
@@ -80,7 +82,7 @@ module QRISConverter
           processor.as_png(
             module_px_size: 2,
             size: 960,
-          ), qr.url
+          ), qr.url,
         )
         qr.data = image_data.to_data_url
         qr.debug = merchant.debug_emv
@@ -128,7 +130,7 @@ module QRISConverter
           end
         end
         if tmp_logo then
-          qr_logo = ChunkyPNG::Image.from_file(tmp_logo.path)
+          qr_logo = ChunkyPNG::Image.from_file(tmp_logo.path) rescue nil
         end
       end
       
